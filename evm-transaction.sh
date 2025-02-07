@@ -155,13 +155,14 @@ for i in range(num_tx):
             try:
                 raw_tx = signed_tx['raw_transaction']
             except Exception as e2:
-                print(RED + "❌ Failed to retrieve raw transaction data for transaction", i+1, RESET)
+                print(RED + f"❌ Failed to retrieve raw transaction data for transaction {i+1}" + RESET)
                 sys.exit(1)
     
     # Send the transaction
     try:
         tx_hash = web3.eth.send_raw_transaction(raw_tx)
         print(GREEN + f"✅ Transaction {i+1}/{num_tx} sent! Tx Hash: {web3.to_hex(tx_hash)}" + RESET)
+        print(GREEN + f"   Amount sent: {random_amount:.4f} ETH" + RESET)
     except Exception as e:
         print(RED + f"❌ Failed to send transaction {i+1}/{num_tx}: {e}" + RESET)
     
