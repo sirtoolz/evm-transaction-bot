@@ -1,8 +1,9 @@
 #!/bin/bash
 # evm-transaction.sh
-# This script sends a transaction on any Ethereum-based blockchain.
-# It asks for your private key, network type, RPC URL, transfer amount, and destination address.
-# If no destination address is provided, a random one will be generated.
+# This script sends multiple transactions on any Ethereum-based blockchain.
+# It asks for your private key, network type, RPC URL, a range for the transfer amount (in ETH),
+# and the number of transactions to send.
+# If no recipient address is provided, a random one will be generated.
 #
 # Made With Love By SIRTOOLZ
 # 📢 Join my Telegram: https://t.me/sirtoolzalpha
@@ -26,6 +27,7 @@ TMP_PY=$(mktemp /tmp/evm_tx_script.XXXXXX.py)
 cat << 'EOF' > "$TMP_PY"
 import secrets
 import sys
+import random
 from web3 import Web3
 
 # ANSI color codes
@@ -54,7 +56,7 @@ def generate_random_address():
     # Generate a random 20-byte hex string and format as an Ethereum address.
     return "0x" + secrets.token_hex(20)
 
-# Banner
+# Print banner
 print_banner()
 
 # Ask for the user's private key first.
@@ -72,12 +74,26 @@ if not rpc_url:
     print(RED + "❌ No RPC URL provided. Exiting." + RESET)
     sys.exit(1)
 
-# Ask for the amount to transfer (in ETH)
-amount_str = input(BLUE + "Enter the amount to transfer (in ETH): " + RESET).strip()
+# Ask for minimum and maximum amount to transfer (in ETH)
+min_amount_str = input(BLUE + "Enter the minimum amount to transfer (in ETH): " + RESET).strip()
+max_amount_str = input(BLUE + "Enter the maximum amount to transfer (in ETH): " + RESET).strip()
 try:
-    amount = float(amount_str)
+    min_amount = float(min_amount_str)
+    max_amount = float(max_amount_str)
+    if min_amount < 0 or max_amount < 0 or max_amount < min_amount:
+        raise ValueError
 except ValueError:
-    print(RED + "❌ Invalid amount provided. Exiting." + RESET)
+    print(RED + "❌ Invalid amount range provided. Exiting." + RESET)
+    sys.exit(1)
+
+# Ask for the number of transactions to send
+num_tx_str = input(CYAN + "Enter the number of transactions to send: " + RESET).strip()
+try:
+    num_tx = int(num_tx_str)
+    if num_tx < 1:
+        raise ValueError
+except ValueError:
+    print(RED + "❌ Invalid number of transactions. Exiting." + RESET)
     sys.exit(1)
 
 # Ask for the recipient address
@@ -102,7 +118,7 @@ except Exception as e:
 sender_address = account.address
 print(GREEN + f"✅ Loaded sender address: {sender_address}" + RESET)
 
-# Build the transaction details
+# Get gas price and starting nonce
 try:
     gas_price = web3.eth.gas_price
 except Exception as e:
@@ -110,40 +126,47 @@ except Exception as e:
     sys.exit(1)
 
 nonce = web3.eth.get_transaction_count(sender_address)
-amount_wei = web3.to_wei(amount, 'ether')
 
-tx = {
-    'to': recipient,
-    'value': amount_wei,
-    'gas': 21000,
-    'gasPrice': gas_price,
-    'nonce': nonce,
-    'chainId': web3.eth.chain_id
-}
-
-# Sign the transaction
-signed_tx = web3.eth.account.sign_transaction(tx, private_key)
-
-# Retrieve raw transaction data with a fallback approach
-try:
-    raw_tx = signed_tx.rawTransaction
-except AttributeError:
-    # Fallback if the attribute is missing
+# Send the specified number of transactions
+for i in range(num_tx):
+    # Randomly choose an amount between the minimum and maximum provided
+    random_amount = random.uniform(min_amount, max_amount)
+    amount_wei = web3.to_wei(random_amount, 'ether')
+    
+    tx = {
+        'to': recipient,
+        'value': amount_wei,
+        'gas': 21000,
+        'gasPrice': gas_price,
+        'nonce': nonce,
+        'chainId': web3.eth.chain_id
+    }
+    
+    # Sign the transaction
+    signed_tx = web3.eth.account.sign_transaction(tx, private_key)
+    
+    # Retrieve raw transaction data (handle attribute fallback)
     try:
-        raw_tx = signed_tx['rawTransaction']
-    except Exception as e:
+        raw_tx = signed_tx.rawTransaction
+    except AttributeError:
         try:
-            raw_tx = signed_tx['raw_transaction']
-        except Exception as e2:
-            print(RED + "❌ Failed to retrieve raw transaction data." + RESET)
-            sys.exit(1)
-
-# Send the transaction
-try:
-    tx_hash = web3.eth.send_raw_transaction(raw_tx)
-    print(GREEN + f"✅ Transaction sent! Tx Hash: {web3.to_hex(tx_hash)}" + RESET)
-except Exception as e:
-    print(RED + f"❌ Failed to send transaction: {e}" + RESET)
+            raw_tx = signed_tx['rawTransaction']
+        except Exception as e:
+            try:
+                raw_tx = signed_tx['raw_transaction']
+            except Exception as e2:
+                print(RED + "❌ Failed to retrieve raw transaction data for transaction", i+1, RESET)
+                sys.exit(1)
+    
+    # Send the transaction
+    try:
+        tx_hash = web3.eth.send_raw_transaction(raw_tx)
+        print(GREEN + f"✅ Transaction {i+1}/{num_tx} sent! Tx Hash: {web3.to_hex(tx_hash)}" + RESET)
+    except Exception as e:
+        print(RED + f"❌ Failed to send transaction {i+1}/{num_tx}: {e}" + RESET)
+    
+    # Increment the nonce for the next transaction
+    nonce += 1
 EOF
 
 # Run the embedded Python script
