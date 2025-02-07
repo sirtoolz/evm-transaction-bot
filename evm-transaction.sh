@@ -124,9 +124,23 @@ tx = {
 # Sign the transaction
 signed_tx = web3.eth.account.sign_transaction(tx, private_key)
 
+# Retrieve raw transaction data with a fallback approach
+try:
+    raw_tx = signed_tx.rawTransaction
+except AttributeError:
+    # Fallback if the attribute is missing
+    try:
+        raw_tx = signed_tx['rawTransaction']
+    except Exception as e:
+        try:
+            raw_tx = signed_tx['raw_transaction']
+        except Exception as e2:
+            print(RED + "❌ Failed to retrieve raw transaction data." + RESET)
+            sys.exit(1)
+
 # Send the transaction
 try:
-    tx_hash = web3.eth.send_raw_transaction(signed_tx.rawTransaction)
+    tx_hash = web3.eth.send_raw_transaction(raw_tx)
     print(GREEN + f"✅ Transaction sent! Tx Hash: {web3.to_hex(tx_hash)}" + RESET)
 except Exception as e:
     print(RED + f"❌ Failed to send transaction: {e}" + RESET)
