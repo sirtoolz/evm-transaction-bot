@@ -28,6 +28,7 @@ cat << 'EOF' > "$TMP_PY"
 import secrets
 import sys
 import random
+import time
 from web3 import Web3
 
 # ANSI color codes
@@ -168,6 +169,11 @@ for i in range(num_tx):
     
     # Increment the nonce for the next transaction
     nonce += 1
+    
+    # Wait 10 seconds before sending the next transaction
+    if i < num_tx - 1:
+        print(YELLOW + "⏳ Waiting 10 seconds before next transaction..." + RESET)
+        time.sleep(10)
 EOF
 
 # Run the embedded Python script
