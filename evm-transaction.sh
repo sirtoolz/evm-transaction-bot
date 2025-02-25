@@ -1,7 +1,7 @@
 #!/bin/bash
 # evm-transaction.sh
 # This script sends multiple transactions on any Ethereum-based blockchain.
-# It asks for your private key, network type, RPC URL, a range for the transfer amount (in ETH),
+# It asks for your private key (masked), network type, RPC URL, a range for the transfer amount (in ETH),
 # and the number of transactions to send.
 # If no recipient address is provided, a random one will be generated.
 #
@@ -29,6 +29,7 @@ import secrets
 import sys
 import random
 import time
+import getpass
 from web3 import Web3
 
 # ANSI color codes
@@ -60,8 +61,8 @@ def generate_random_address():
 # Print banner
 print_banner()
 
-# Ask for the user's private key first.
-private_key = input(GREEN + "Enter your wallet private key: " + RESET).strip()
+# Ask for the user's private key (masked input).
+private_key = getpass.getpass(GREEN + "Enter your wallet private key: " + RESET).strip()
 if not private_key:
     print(RED + "❌ No private key provided. Exiting." + RESET)
     sys.exit(1)
